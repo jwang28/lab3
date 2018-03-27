@@ -2,7 +2,7 @@ import java.util.*;
 import java.io.*
 
 public class Task(){
-	ArrayList <Activity> activities = new ArrayList<Activity>();
+	private ArrayList <Activity> activities = new ArrayList<Activity>();
 	int iterator, id, finishTime, computeTime, numBlocked;
 	boolean aborted;
 
@@ -13,6 +13,10 @@ public class Task(){
 			id = i + 1;
 			comptueTime = 0;
 			numBlocked = 0;
+	}
+
+	public ArrayList<Activity> getActivities(){
+		return this.activities;
 	}
 
 	//public void reset (int i) i this needed
