@@ -1,7 +1,7 @@
 import java.util.*;
-import java.io.*
+import java.io.*;
 
-public class Task(){
+public class Task{
 	private ArrayList <Activity> activities = new ArrayList<Activity>();
 	int iterator, id, finishTime, computeTime, numBlocked;
 	boolean aborted;
@@ -11,7 +11,7 @@ public class Task(){
 			this.iterator = 0;
 			this.aborted = false;
 			id = i + 1;
-			comptueTime = 0;
+			computeTime = 0;
 			numBlocked = 0;
 	}
 
@@ -22,7 +22,7 @@ public class Task(){
 	//public void reset (int i) i this needed
 
 	//has another activity
-	public Boolean hasNext(){
+	/*public Boolean hasNext(){
 		if (iterator == activities.size() -1){
 			return false;
 		}
@@ -34,7 +34,7 @@ public class Task(){
 	}
 
 	public Boolean finished(){
-		if (getNext().getType() == "terminate" && computeTime ==0){
+		if (this.getNext().getType() == "terminate" && computeTime ==0){
 			return true;
 		}
 		return false;
@@ -65,18 +65,5 @@ public class Task(){
 
 	public void block(){
 		numBlocked++;
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
+	}*/
 }
