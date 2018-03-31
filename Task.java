@@ -61,6 +61,7 @@ public class Task{
 
 	public void abortTask(){
 		iterator = activities.size() - 1;
+		finished=true;
 		aborted = true;
 		/*numBlocked = 0;*/
 	}
