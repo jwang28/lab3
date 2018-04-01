@@ -4,7 +4,6 @@ import java.util.*;
 public class Main {
 	public static void main (String[] args) throws FileNotFoundException{
 		/*int numTasks=0, numResources =0;*/
-		System.out.println("start program");
 		File f = new File (args[0]);
 
 		Scanner input = new Scanner(f);
@@ -29,7 +28,6 @@ public class Main {
 			int delay = input.nextInt();
 			int resource = input.nextInt();
 			int number = input.nextInt();
-			System.out.println("type is: " + type + ' ' + id + " " + delay + ' ' + resource + ' ' + number);
 			tasks[id - 1].getActivities().add(new Activity (type, id, delay, resource, number));
 		}
 		//call fifo and banker
@@ -53,23 +51,17 @@ public class Main {
 
 		//process activities
 		while(!checkFinish(tasks)){
-			
+			for (Task t: tasks){
+				t.setProcessed(false);
+			}
 			ready.clear();
 			wait.clear();
-			System.out.println("******** cycle " + cycle + "*********");
 			
 			int[] releasedResources = new int[numResources];
 			for (int i =0; i<releasedResources.length; i++){
 				releasedResources[i] = 0;
 			}
-
-			System.out.println("print blocked");
-			for (Task t: blocked){
-				System.out.print(t.getId() + " ");
-			}
-			System.out.println("end block");
 			//check if blocked tasks can be run
-			
 			while (blocked.peek()!=null){
 				Task t = blocked.poll();
 				if (t.getActivity().getType().equals("terminate")){
@@ -89,72 +81,20 @@ public class Main {
 				if (!t.getActivity().getType().equals("terminate")){
 					available[t.getActivity().getResource()]+=t.getActivity().getNumber();
 				}
-				System.out.println(t.getId() + " remove from blocked");
+				tasksLeft = processActivities(tasks, available, allocated, blocked, releasedResources, t.getId()-1, tasksLeft, cycle);
+				t.setProcessed(true);
 			}
 			for (Task t: wait){
 				blocked.add(t);
 			}
 			for (int i =0; i<tasks.length; i++){
-				System.out.print("Task " + (i+1) + ": ");
 				//not in blocked or not just released
-				if (!blocked.contains(tasks[i]) && !tasks[i].isAborted() && !tasks[i].isFinished()){
-					Activity cur = tasks[i].getActivity();
-					
-					if (cur.getDelay()>0 && !cur.isDelayed()){
-						tasks[i].setComputeTime(cur.getDelay());
-						blocked.add(tasks[i]);
-						cur.setDelayed();
-						tasks[i].setComputing(true);
-						System.out.println(" blocked" + cur.getType() + " " + cur.getDelay());
-						/*tasks[i].next();*/
-					}
-
-					else if(cur.getType().equals("initiate")){
-						System.out.println("initiate " + cur.getNumber() + " " + numResources);
-
-						if (cur.getNumber() >= numResources){
-							tasks[i].next();
-						}
-						else{
-							tasks[i].abortTask();
-						}
-					}
-					else if (cur.getType().equals("request")){
-						System.out.println("request");
-						if (cur.getNumber() <= available[cur.getResource()]){
-							available[cur.getResource()]-=cur.getNumber();
-							allocated[i][cur.getResource()]+=cur.getNumber();
-							tasks[i].next();
-						}
-						else{
-							blocked.add(tasks[i]);
-						}
-					}
-					else if (cur.getType().equals("release")){
-						//not needed here
-						//i/*f(cur.getDelay() == 0){*/
-							System.out.println("release " + cur.getNumber());
-							releasedResources[cur.getResource()]+=cur.getNumber();
-							allocated[i][cur.getResource()]-=cur.getNumber();
-							tasks[i].next();
-						//}
-						
-					}
-					else{	
-						System.out.println("else: " + cur.getType());
-						tasks[i].finishTask(cycle + tasks[i].getComputeTime());
-						System.out.println("finished!!!");
-						tasksLeft--;
-					}
-				}
-				
+				tasksLeft = processActivities(tasks, available, allocated, blocked, releasedResources, i, tasksLeft, cycle);
 			}
 
 			//check deadlock and process
 			if (blocked.size() == tasksLeft && !allWaiting(tasks) && blocked.size() > 1){
 
-				//deadlock!!!!!!!
-				System.out.println("deadlock " + blocked.size() + " vs: " + tasksLeft);
 				for (int i = 0; i<tasks.length; i++){
 
 					if (!tasks[i].isFinished() && !tasks[i].isAborted()){
@@ -165,7 +105,6 @@ public class Main {
 						tasks[i].finishTask(0);
 						for (int j = 0; j<numResources; j++){
 							available[j] += allocated[i][j];
-							System.out.println(allocated[i][j] + " resources allocated back\n" + "resource 1: " + available[j]);
 						}
 						blocked.remove(tasks[i]);						
 					}
@@ -190,13 +129,48 @@ public class Main {
 
 		printFinishTime(tasks);
 	}
+	public static int processActivities(Task[] tasks, int[] available, int[][] allocated, Queue<Task> blocked, int[] releasedResources, int i, int numTasks, int cycle){
+		int tasksLeft = numTasks;
+		if (!blocked.contains(tasks[i]) && !tasks[i].isAborted() && !tasks[i].isFinished() && !tasks[i].processed()){
+			Activity cur = tasks[i].getActivity();
+			
+			if (cur.getDelay()>0 && !cur.isDelayed()){
+				tasks[i].setComputeTime(cur.getDelay());
+				blocked.add(tasks[i]);
+				cur.setDelayed();
+				tasks[i].setComputing(true);
+			}
+
+			else if(cur.getType().equals("initiate")){
+				tasks[i].next();
+			}
+			else if (cur.getType().equals("request")){
+				if (cur.getNumber() <= available[cur.getResource()]){
+					available[cur.getResource()]-=cur.getNumber();
+					allocated[i][cur.getResource()]+=cur.getNumber();
+					tasks[i].next();
+				}
+				else{
+					blocked.add(tasks[i]);
+				}
+			}
+			else if (cur.getType().equals("release")){
+				releasedResources[cur.getResource()]+=cur.getNumber();
+				allocated[i][cur.getResource()]-=cur.getNumber();
+				tasks[i].next();
+			}
+			else{	
+				tasks[i].finishTask(cycle + tasks[i].getComputeTime());
+				tasksLeft--;
+			}
+		}
+		return tasksLeft;
+	}
 	
 	public static boolean allWaiting(Task[] tasks){
 		for (Task t: tasks){
 			int comp = t.getComputeTime();
-			System.out.println("all waiting: " + comp);
 			if (!t.isFinished() && t.getComputeTime() == 0){
-				System.out.println("FALSE!!!");
 				return false;
 			}
 		}
@@ -226,20 +200,19 @@ public class Main {
 		int totalTime = 0;
 		int totalBlockedTime = 0;
 		System.out.println("          FIFO");
-		//DecimalFormat dfPrint = new DecimalFormat("####");
 		for(int i=0;i<tasks.length;i++){
 			System.out.print("Task " + tasks[i].getId()+"       ");
 			if(tasks[i].isAborted()){
-				System.out.print("Aborted");
+				System.out.println("Aborted");
 			}
 			else{
 				totalTime+=tasks[i].getFinishTime();
 				totalBlockedTime+=tasks[i].getNumBlocked();
-				System.out.print("finishTime: "  + tasks[i].getFinishTime()+"    ");
-				System.out.print("numBlocked: " +tasks[i].getNumBlocked()+"    ");
-				System.out.println((double)tasks[i].getNumBlocked()/tasks[i].getFinishTime());
+				System.out.print(tasks[i].getFinishTime()+"    ");
+				System.out.print(tasks[i].getNumBlocked()+"    ");
+				double temp = ((double)tasks[i].getNumBlocked()/tasks[i].getFinishTime()) * 100;
+				System.out.println((int) temp + "%");
 			}
-			System.out.println();
 		}
 		System.out.print("Total        ");
 		
@@ -247,12 +220,9 @@ public class Main {
 		double print = (double)totalBlockedTime/totalTime;
 		System.out.print(totalTime+"    ");
 		System.out.print(totalBlockedTime+"    ");				
-		System.out.print((print*100)+"%");
+		System.out.print((int)(print*100) + "%");
 		System.out.println();
 	}
-
-
-	//print methods
 
 
 
