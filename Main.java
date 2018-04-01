@@ -53,6 +53,9 @@ public class Main {
 
 		//process activities
 		while(!checkFinish(tasks)){
+			/*if (cycle >10){
+				break;
+			}*/
 			ready.clear();
 			wait.clear();
 			System.out.println("******** cycle " + cycle + "*********");
@@ -72,7 +75,10 @@ public class Main {
 			
 			while (blocked.peek()!=null){
 				Task t = blocked.poll();
-				if (canAllocate(t, available) && t.getComputeTime() ==0){
+				if (t.getActivity().getType().equals("terminate")){
+					ready.add(t);
+				}
+				else if (canAllocate(t, available) && t.getComputeTime() == 0){
 					ready.add(t);
 					available[t.getActivity().getResource()]-=t.getActivity().getNumber();
 				}
@@ -82,7 +88,9 @@ public class Main {
 			}
 			for (Task t: ready){
 				blocked.remove(t);
-				available[t.getActivity().getResource()]+=t.getActivity().getNumber();
+				if (!t.getActivity().getType().equals("terminate")){
+					available[t.getActivity().getResource()]+=t.getActivity().getNumber();
+				}
 				System.out.println(t.getId() + " remove from blocked");
 			}
 			for (Task t: wait){
@@ -93,8 +101,16 @@ public class Main {
 				//not in blocked or not just released
 				if (!blocked.contains(tasks[i]) && !tasks[i].isAborted() && !tasks[i].isFinished()){
 					Activity cur = tasks[i].getActivity();
+					
+					if (cur.getDelay()>0 && !cur.isDelayed()){
+						tasks[i].setComputeTime(cur.getDelay());
+						blocked.add(tasks[i]);
+						cur.setDelayed();
+						System.out.println(" blocked" + cur.getType() + " " + cur.getDelay());
+						/*tasks[i].next();*/
+					}
 
-					if(cur.getType().equals("initiate")){
+					else if(cur.getType().equals("initiate")){
 						System.out.println("initiate " + cur.getNumber() + " " + numResources);
 
 						if (cur.getNumber() >= numResources){
@@ -106,26 +122,28 @@ public class Main {
 					}
 					else if (cur.getType().equals("request")){
 						System.out.println("request");
-						if (cur.getNumber() <= available[cur.getResource()] && cur.getDelay() == 0){
+						if (cur.getNumber() <= available[cur.getResource()]){
 							available[cur.getResource()]-=cur.getNumber();
 							allocated[i][cur.getResource()]+=cur.getNumber();
 							tasks[i].next();
 						}
 						else{
-							tasks[i].setComputeTime(cur.getDelay());
 							blocked.add(tasks[i]);
-							System.out.println(" blocked");
 						}
 					}
 					else if (cur.getType().equals("release")){
-						System.out.println("release " + cur.getNumber());
-						releasedResources[cur.getResource()]+=cur.getNumber();
-						allocated[i][cur.getResource()]-=cur.getNumber();
-						tasks[i].next();
+						//not needed here
+						//i/*f(cur.getDelay() == 0){*/
+							System.out.println("release " + cur.getNumber());
+							releasedResources[cur.getResource()]+=cur.getNumber();
+							allocated[i][cur.getResource()]-=cur.getNumber();
+							tasks[i].next();
+						//}
+						
 					}
 					else{	
 						System.out.println("else: " + cur.getType());
-						tasks[i].finishTask(cycle);
+						tasks[i].finishTask(cycle + tasks[i].getComputeTime());
 						System.out.println("finished!!!");
 						tasksLeft--;
 					}
@@ -138,15 +156,17 @@ public class Main {
 			}
 
 			//process blocked
-			for (Task t: blocked){
-				if (t.getComputeTime() > 1){
+			/*for (Task t: blocked){
+				if (t.getComputeTime() > 0){
 					t.compute();
 				}
 				t.addBlock();
-			}
+			}*/
 			//check deadlock and process
-			if (blocked.size() == tasksLeft){
-				System.out.println("deadlock");
+			if (blocked.size() == tasksLeft && !allWaiting(tasks) && blocked.size() > 1){
+
+				//deadlock!!!!!!!
+				System.out.println("deadlock " + blocked.size() + " vs: " + tasksLeft);
 				for (int i = 0; i<tasks.length; i++){
 
 					if (!tasks[i].isFinished() && !tasks[i].isAborted()){
@@ -163,6 +183,12 @@ public class Main {
 					}
 				}
 			}
+			for (Task t: blocked){
+				if (t.getComputeTime() > 0){
+					t.compute();
+				}
+				t.addBlock();
+			}
 			for (int i = 0; i<numResources; i++){ 
 				available[i]+=releasedResources[i];
 			}
@@ -176,12 +202,25 @@ public class Main {
 	/*public static boolean isDeadlock(Task[] task, int[] available){
 		
 	}*/
-
-	public static Boolean canAllocate (Task task, int[] available) {
+	public static boolean allWaiting(Task[] tasks){
+		for (Task t: tasks){
+			int comp = t.getComputeTime();
+			System.out.println("all waiting: " + comp);
+			if (!t.isFinished() && t.getComputeTime() == 0){
+				System.out.println("FALSE!!!");
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public static boolean canAllocate (Task task, int[] available) {
 		Activity cur = task.getActivity();
-		System.out.println("allocate " + task.getId() + " " + cur.getType() + " " + cur.getNumber());
-		if (available[cur.getResource()] - cur.getNumber() >= 0){
-			return true;
+		// System.out.println("allocate " + task.getId() + " " + cur.getType() + " " + cur.getNumber());
+		if (cur.getResource() >=0){
+			if (available[cur.getResource()] - cur.getNumber() >= 0){
+				return true;
+			}	
 		}
 		return false;
 	}
