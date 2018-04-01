@@ -4,7 +4,7 @@ import java.io.*;
 public class Task{
 	private ArrayList <Activity> activities = new ArrayList<Activity>();
 	private int iterator, id, finishTime, computeTime, numBlocked;
-	boolean aborted, finished;
+	boolean aborted, finished, computing;
 
 	//initialize with task number
 	public Task(int i){
@@ -15,9 +15,17 @@ public class Task{
 			id = i + 1;
 			computeTime = 0;
 			numBlocked = 0;
+			computing = false;
 	}
 	public int getFinishTime(){
 		return this.finishTime;
+	}
+	public void setComputing(boolean computing){
+		this.computing = computing;
+	}
+	
+	public boolean isComputing(){
+		return this.computing;
 	}
 	public int getNumBlocked(){
 		return this.numBlocked;

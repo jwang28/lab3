@@ -53,13 +53,10 @@ public class Main {
 
 		//process activities
 		while(!checkFinish(tasks)){
-			/*if (cycle >10){
-				break;
-			}*/
+			
 			ready.clear();
 			wait.clear();
 			System.out.println("******** cycle " + cycle + "*********");
-			//place at end?
 			
 			int[] releasedResources = new int[numResources];
 			for (int i =0; i<releasedResources.length; i++){
@@ -79,6 +76,7 @@ public class Main {
 					ready.add(t);
 				}
 				else if (canAllocate(t, available) && t.getComputeTime() == 0){
+					t.setComputing(false);
 					ready.add(t);
 					available[t.getActivity().getResource()]-=t.getActivity().getNumber();
 				}
@@ -106,6 +104,7 @@ public class Main {
 						tasks[i].setComputeTime(cur.getDelay());
 						blocked.add(tasks[i]);
 						cur.setDelayed();
+						tasks[i].setComputing(true);
 						System.out.println(" blocked" + cur.getType() + " " + cur.getDelay());
 						/*tasks[i].next();*/
 					}
@@ -148,20 +147,9 @@ public class Main {
 						tasksLeft--;
 					}
 				}
-				//System.out.println(tasks[i].getActivity().getType());
-				/*if(tasks[i].getFinishTime() == 0){
-					tasks[i].finishTask(cycle);
-					System.out.println("finished!!!");
-				}*/
+				
 			}
 
-			//process blocked
-			/*for (Task t: blocked){
-				if (t.getComputeTime() > 0){
-					t.compute();
-				}
-				t.addBlock();
-			}*/
 			//check deadlock and process
 			if (blocked.size() == tasksLeft && !allWaiting(tasks) && blocked.size() > 1){
 
@@ -187,7 +175,10 @@ public class Main {
 				if (t.getComputeTime() > 0){
 					t.compute();
 				}
-				t.addBlock();
+				if(!t.isComputing()){
+					t.addBlock();
+				}
+				
 			}
 			for (int i = 0; i<numResources; i++){ 
 				available[i]+=releasedResources[i];
@@ -199,9 +190,7 @@ public class Main {
 
 		printFinishTime(tasks);
 	}
-	/*public static boolean isDeadlock(Task[] task, int[] available){
-		
-	}*/
+	
 	public static boolean allWaiting(Task[] tasks){
 		for (Task t: tasks){
 			int comp = t.getComputeTime();
@@ -216,7 +205,6 @@ public class Main {
 	
 	public static boolean canAllocate (Task task, int[] available) {
 		Activity cur = task.getActivity();
-		// System.out.println("allocate " + task.getId() + " " + cur.getType() + " " + cur.getNumber());
 		if (cur.getResource() >=0){
 			if (available[cur.getResource()] - cur.getNumber() >= 0){
 				return true;
@@ -233,15 +221,7 @@ public class Main {
 		}
 		return true;
 	}
-	public static int numFinished(Task[] task){
-		int finished = 0;
-		for (int i = 0; i<task.length; i++){
-			if (task[i].isFinished()){
-				finished++;
-			}
-		}
-		return finished;
-	}
+	
 	public static void printFinishTime(Task[] tasks){
 		int totalTime = 0;
 		int totalBlockedTime = 0;
