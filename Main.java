@@ -17,9 +17,11 @@ public class Main {
 		}
 
 		//initialize array of tasks
-		Task[] tasks = new Task[numTasks];
+		Task[] tasks_fifo = new Task[numTasks];
+		Task[] tasks_banker = new Task[numTasks];
 		for (int i = 0; i<numTasks; i++){
-			tasks[i] = new Task(i);
+			tasks_fifo[i] = new Task(i);
+			tasks_banker[i] = new Task(i);
 		}
 		while (input.hasNext()){
 			
@@ -28,16 +30,19 @@ public class Main {
 			int delay = input.nextInt();
 			int resource = input.nextInt();
 			int number = input.nextInt();
-			tasks[id - 1].getActivities().add(new Activity (type, id, delay, resource, number));
+			tasks_fifo[id - 1].getActivities().add(new Activity (type, id, delay, resource, number));
+
+			tasks_banker[id - 1].getActivities().add(new Activity (type, id, delay, resource, number));
 		}
 		//call fifo and banker
-		//fifo (numTasks, numResources, tasks,resources);
-		Task[] bankerTasks = banker (numTasks, numResources, tasks, resources);
-		printFinishTime(bankerTasks);
+		Task[] fifoTasks = fifo (numTasks, numResources, tasks_fifo,resources);
+		printFinishTime("FIFO", fifoTasks);
+		Task[] bankerTasks = banker (numTasks, numResources, tasks_banker, resources);
+		printFinishTime("BANKER\'S", bankerTasks);
 	}
 
 	//fifo
-	public static void fifo(int numTasks, int numResources, Task[] tasks, int[] resources){
+	public static Task[] fifo(int numTasks, int numResources, Task[] tasks, int[] resources){
 		int cycle = 0;
 		int tasksLeft = numTasks;
 		int[] available = new int[numResources];
@@ -132,7 +137,7 @@ public class Main {
 		
 
 
-		printFinishTime(tasks);
+		return tasks;
 	}
 	public static Task[] banker(int numTasks, int numResources, Task[] tasks, int[] resources){
 		int cycle = 0;
@@ -160,9 +165,9 @@ public class Main {
 		//process activities
 		while(!checkFinish(tasks)){
 			//for testing purposes
-			if (cycle > 10){
+			/*if (cycle > 10){
 				break;
-			}
+			}*/
 			System.out.println("***************" + cycle + "***************");
 			for (Task t: tasks){
 				t.setProcessed(false);
@@ -189,6 +194,7 @@ public class Main {
 					ready.add(t);
 					//subtract here so other requests do not get granted
 					available[t.getActivity().getResource()]-=t.getActivity().getNumber();
+					System.out.println(available[t.getActivity().getResource()]);
 					need[t.getId() -1][t.getActivity().getResource()]-=t.getActivity().getNumber();
 				}
 				else{
@@ -314,7 +320,14 @@ public class Main {
 				}
 				else{
 /*					System.out.println("i is: " + i + " resource is: " + cur.getResource());
-*/					if (available[cur.getResource()] >= need[i][cur.getResource()]){
+*/					/*if (available[cur.getResource()] >= need[i][cur.getResource()]){
+						available[cur.getResource()]-=cur.getNumber();
+						allocated[i][cur.getResource()]+=cur.getNumber();
+						need[i][cur.getResource()]-=cur.getNumber();
+						tasks[i].next();
+						System.out.println("granted");
+					}*/
+					if (isSafe(tasks[i], available, allocated, need, i)){
 						available[cur.getResource()]-=cur.getNumber();
 						allocated[i][cur.getResource()]+=cur.getNumber();
 						need[i][cur.getResource()]-=cur.getNumber();
@@ -389,7 +402,36 @@ public class Main {
 		Activity cur = task.getActivity();
 
 		if(cur.getNumber() <= need[i][cur.getResource()] && available[cur.getResource()] >= need[i][cur.getResource()]){
-			return true;
+			System.out.println("enough resources but is it safe");
+			
+			for (int row = 0 ; row<need.length; row++){
+				available[cur.getResource()]-=cur.getNumber();
+				need[task.getId()-1][cur.getResource()]-=cur.getNumber();
+				System.out.println("check task: " + row);
+				int count = 0;
+				for (int col = 0; col<need[row].length; col++){
+					System.out.print("avail: " + available[col] + " vs " + need[row][col]);
+
+					if (available[col] >= need[row][col]){
+						System.out.println(" ok ");
+						count++;
+					}
+					else{
+						System.out.println();
+					}
+
+				}
+				
+				available[cur.getResource()]+=cur.getNumber();
+				need[task.getId()-1][cur.getResource()]+=cur.getNumber();
+				int resources = need[row].length;
+				if (count == resources){
+					System.out.println("return true!");
+					return true;
+				}
+				
+			}
+			
 		}
 		return false;
 		
@@ -426,10 +468,10 @@ public class Main {
 		return true;
 	}
 	
-	public static void printFinishTime(Task[] tasks){
+	public static void printFinishTime(String algo, Task[] tasks){
 		int totalTime = 0;
 		int totalBlockedTime = 0;
-		System.out.println("          FIFO");
+		System.out.println("          " + algo);
 		for(int i=0;i<tasks.length;i++){
 			System.out.print("Task " + tasks[i].getId()+"       ");
 			if(tasks[i].isAborted()){
