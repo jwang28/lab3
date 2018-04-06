@@ -3,10 +3,8 @@ import java.io.*;
 
 public class Task{
 	private ArrayList <Activity> activities = new ArrayList<Activity>();
-	private ArrayList<Integer> claimed = new ArrayList<Integer>();
-	private ArrayList<Integer> used = new ArrayList<Integer>();
-	private int iterator, id, finishTime, computeTime, numBlocked, max;
-	boolean aborted, finished, computing, processed, isClaimed;
+	private int iterator, id, finishTime, computeTime, numBlocked;
+	boolean aborted, finished, computing, processed;
 
 	//initialize with task number
 	public Task(int i){
@@ -20,27 +18,8 @@ public class Task{
 			computing = false;
 			processed = false;
 	}
-	public void setIsClaimed(boolean isClaimed){
-		this.isClaimed = isClaimed;
-	}
-	public boolean isClaimed(){
-		return this.isClaimed;
-	}
-	public void setUsed(int index, int max){
-		used.add(index, max);
-	}
-	public int getUsed(int index){
-		if (used.size() > index){
-			return used.get(index);
-		}
-		return 0;
-	}
-	public void setMax(int index, int max){
-		claimed.add(index, max);
-	}
-	public int getMax (int index){
-		return claimed.get(index);
-	}
+	
+	
 	public int getFinishTime(){
 		return this.finishTime;
 	}
