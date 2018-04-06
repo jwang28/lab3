@@ -34,14 +34,13 @@ public class Main {
 			tasks_banker[id - 1].getActivities().add(new Activity (type, id, delay, resource, number));
 		}
 		//call fifo and banker
-		Task[] fifoTasks = fifo (numTasks, numResources, tasks_fifo,resources);
-		printFinishTime("FIFO", fifoTasks);
-		Task[] bankerTasks = banker (numTasks, numResources, tasks_banker, resources);
+		fifo (numTasks, numResources, tasks_fifo,resources);
+		banker (numTasks, numResources, tasks_banker, resources);
 		//printFinishTime("BANKER\'S", bankerTasks);
 	}
 
 	//fifo
-	public static Task[] fifo(int numTasks, int numResources, Task[] tasks, int[] resources){
+	public static void fifo(int numTasks, int numResources, Task[] tasks, int[] resources){
 		int cycle = 0;
 		int tasksLeft = numTasks;
 		int[] available = new int[numResources];
@@ -129,9 +128,9 @@ public class Main {
 			}
 			cycle++;
 		}
-		return tasks;
+		printFinishTime("FIFO", tasks);
 	}
-	public static Task[] banker(int numTasks, int numResources, Task[] tasks, int[] resources){
+	public static void banker(int numTasks, int numResources, Task[] tasks, int[] resources){
 		int cycle = 0;
 		int tasksLeft = numTasks;
 		int[] available = new int[numResources];
@@ -157,8 +156,6 @@ public class Main {
 
 		//process activities
 		while(!checkFinish(tasks)){
-			
-			System.out.println("***************" + cycle + "***************");
 			for (Task t: tasks){
 				t.setProcessed(false);
 			}
@@ -171,24 +168,20 @@ public class Main {
 			}
 			//check if blocked tasks can be run
 			while (blocked.peek()!=null){
-				System.out.println("check block");
 				Task t = blocked.poll();
-				System.out.println(t.getId());
 				//immediately pull out of block and process
 				if (t.getActivity().getType().equals("terminate")){
 					ready.add(t);
 				}
 				else if (isSafe(t, available, allocated, need, t.getId() -1) && t.getComputeTime() == 0){
-					System.out.println("allocated");
 					t.setComputing(false);
 					ready.add(t);
 					//subtract here so other requests do not get granted
 					available[t.getActivity().getResource()]-=t.getActivity().getNumber();
-					System.out.println(available[t.getActivity().getResource()]);
 					need[t.getId() -1][t.getActivity().getResource()]-=t.getActivity().getNumber();
 				}
 				else{
-					System.out.println("back to block");
+					//System.out.println("back to block");
 					wait.add(t);
 				}
 			}
@@ -227,7 +220,6 @@ public class Main {
 		}
 		
 		printFinishTimeBanker("Banker's", tasks, errors);
-		return tasks;
 	}
 	public static int processActivities(Task[] tasks, int[] available, int[][] allocated, Queue<Task> blocked, int[] releasedResources, int i, int numTasks, int cycle){
 		int tasksLeft = numTasks;
@@ -273,7 +265,6 @@ public class Main {
 			Activity cur = tasks[i].getActivity();
 			
 			if (cur.getDelay()>0 && !cur.isDelayed()){
-				System.out.println("Task " + tasks[i].getId() + " is delayed on " + tasks[i].getActivity().getType());
 				tasks[i].setComputeTime(cur.getDelay());
 				blocked.add(tasks[i]);
 				cur.setDelayed();
@@ -281,9 +272,7 @@ public class Main {
 			}
 
 			else if(cur.getType().equals("initiate")){
-				System.out.println("initiate" + cur.getResource());
 				if (cur.getNumber() > resources[cur.getResource()]){
-					System.out.println("task " + tasks[i].getId() + " is aborted");
 					tasks[i].abortTask();
 					errors.add(new Error("Banker", i + 1, cur.getResource(), cur.getNumber(),resources[cur.getResource()],cycle));
 
@@ -296,9 +285,7 @@ public class Main {
 				
 			}
 			else if (cur.getType().equals("request")){
-				System.out.println(tasks[i].getId() + " request " + cur.getNumber());
 				if (cur.getNumber() > need[i][cur.getResource()]){
-					System.out.println("abort on request, requested: " + cur.getNumber() + " but only needs " + need[i][cur.getResource()]);
 					tasks[i].abortTask();
 					errors.add(new Error("Banker", i + 1, cur.getResource(), allocated[i][cur.getResource()],resources[cur.getResource()],cycle));
 					releaseAll(tasks[i], available, allocated);
@@ -310,17 +297,13 @@ public class Main {
 						allocated[i][cur.getResource()]+=cur.getNumber();
 						need[i][cur.getResource()]-=cur.getNumber();
 						tasks[i].next();
-						System.out.println("granted");
 					}
 					else{
-						//block
-						System.out.println("blocked");
 						blocked.add(tasks[i]);
 					}
 				}
 			}
 			else if (cur.getType().equals("release")){
-				System.out.println("release resource " + cur.getResource() + " units: " + cur.getNumber());
 				releasedResources[cur.getResource()]+=cur.getNumber();
 				allocated[i][cur.getResource()]-=cur.getNumber();
 				need[i][cur.getResource()]+=cur.getNumber();			
@@ -333,7 +316,6 @@ public class Main {
 			
 			else{
 				//terminate	
-				System.out.println("else " + cur.getType());
 				tasks[i].finishTask(cycle + tasks[i].getComputeTime());
 				tasksLeft--;
 			}
@@ -368,22 +350,15 @@ public class Main {
 		Activity cur = task.getActivity();
 
 		if(cur.getNumber() <= need[i][cur.getResource()] && available[cur.getResource()] >= need[i][cur.getResource()]){
-			System.out.println("enough resources but is it safe");
 			
 			for (int row = 0 ; row<need.length; row++){
 				available[cur.getResource()]-=cur.getNumber();
 				need[task.getId()-1][cur.getResource()]-=cur.getNumber();
-				System.out.println("check task: " + row);
 				int count = 0;
 				for (int col = 0; col<need[row].length; col++){
-					System.out.print("avail: " + available[col] + " vs " + need[row][col]);
 
 					if (available[col] >= need[row][col]){
-						System.out.println(" ok ");
 						count++;
-					}
-					else{
-						System.out.println();
 					}
 				}
 				
@@ -391,7 +366,6 @@ public class Main {
 				need[task.getId()-1][cur.getResource()]+=cur.getNumber();
 				int resources = need[row].length;
 				if (count == resources){
-					System.out.println("return true!");
 					return true;
 				}
 			}
