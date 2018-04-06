@@ -1,6 +1,7 @@
 import java.util.*;
 import java.io.*;
-
+/*
+The Task class stores the processing time, blocking/computing time, and activities processed*/
 public class Task{
 	private ArrayList <Activity> activities = new ArrayList<Activity>();
 	private int iterator, id, finishTime, computeTime, numBlocked;

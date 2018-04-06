@@ -1,4 +1,7 @@
 import java.util.*;
+/*
+This class stores each activity to be performed by the process/task
+*/
 
 public class Activity{
 	private String type;

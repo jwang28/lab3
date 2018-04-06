@@ -1,15 +1,16 @@
 import java.io.*;
 import java.util.*;
-
+/*Main driver class for the program*/
 public class Main {
 	public static void main (String[] args) throws FileNotFoundException{
+		/*Read input and store into array*/
 		File f = new File (args[0]);
 
 		Scanner input = new Scanner(f);
 		int numTasks = input.nextInt();
 		int numResources = input.nextInt();
 			
-		//do I need to capture the number of resources?
+		//store available resources (max for the program)
 		int[] resources = new int[numResources];
 		for (int i = 0; i<numResources; i++){
 			resources[i] = input.nextInt();
@@ -22,29 +23,25 @@ public class Main {
 			tasks_fifo[i] = new Task(i);
 			tasks_banker[i] = new Task(i);
 		}
+		//Add activities to the tasks
 		while (input.hasNext()){
-			
 			String type = input.next();
 			int id = input.nextInt();
 			int delay = input.nextInt();
 			int resource = input.nextInt();
 			int number = input.nextInt();
 			tasks_fifo[id - 1].getActivities().add(new Activity (type, id, delay, resource, number));
-
 			tasks_banker[id - 1].getActivities().add(new Activity (type, id, delay, resource, number));
 		}
 		//call fifo and banker
 		fifo (numTasks, numResources, tasks_fifo,resources);
 		banker (numTasks, numResources, tasks_banker, resources);
-		//printFinishTime("BANKER\'S", bankerTasks);
 	}
-
-	//fifo
+	/*First in first out approach. The initial claims do not matter in this algorithm*/
 	public static void fifo(int numTasks, int numResources, Task[] tasks, int[] resources){
 		int cycle = 0;
 		int tasksLeft = numTasks;
 		int[] available = new int[numResources];
-		//copy array of available resources
 		for (int i = 0; i<numResources; i++){
 			available[i] = resources[i];
 		}
@@ -54,8 +51,9 @@ public class Main {
 		ArrayList<Task> ready = new ArrayList<Task>();
 		ArrayList<Task> wait = new ArrayList<Task>();
 
-		//process activities
+		//process activities of all tasks
 		while(!checkFinish(tasks)){
+			//reset for the beginning of each run
 			for (Task t: tasks){
 				t.setProcessed(false);
 			}
@@ -72,6 +70,7 @@ public class Main {
 				if (t.getActivity().getType().equals("terminate")){
 					ready.add(t);
 				}
+				//check for no deadlock and finished comoputing
 				else if (canAllocate(t, available) && t.getComputeTime() == 0){
 					t.setComputing(false);
 					ready.add(t);
@@ -81,6 +80,7 @@ public class Main {
 					wait.add(t);
 				}
 			}
+			//remove the ready tasks from block
 			for (Task t: ready){
 				blocked.remove(t);
 				if (!t.getActivity().getType().equals("terminate")){
@@ -93,11 +93,11 @@ public class Main {
 				blocked.add(t);
 			}
 			for (int i =0; i<tasks.length; i++){
-				//not in blocked or not just released
+				//process the activity for each task that is not in blocked or not just released
 				tasksLeft = processActivities(tasks, available, allocated, blocked, releasedResources, i, tasksLeft, cycle);
 			}
 
-			//check deadlock and process
+			//check deadlock and abort lowest numbered task until no deadlock
 			if (blocked.size() == tasksLeft && !allWaiting(tasks) && blocked.size() > 1){
 
 				for (int i = 0; i<tasks.length; i++){
@@ -115,6 +115,7 @@ public class Main {
 					}
 				}
 			}
+			//process all blocked activities
 			for (Task t: blocked){
 				if(t.getComputeTime() == 0){
 					t.addBlock();
@@ -130,6 +131,7 @@ public class Main {
 		}
 		printFinishTime("FIFO", tasks);
 	}
+	/*This method processes the banker's algorithm*/
 	public static void banker(int numTasks, int numResources, Task[] tasks, int[] resources){
 		int cycle = 0;
 		int tasksLeft = numTasks;
@@ -154,7 +156,7 @@ public class Main {
 			}
 		}
 
-		//process activities
+		//process tasks
 		while(!checkFinish(tasks)){
 			for (Task t: tasks){
 				t.setProcessed(false);
@@ -181,10 +183,10 @@ public class Main {
 					need[t.getId() -1][t.getActivity().getResource()]-=t.getActivity().getNumber();
 				}
 				else{
-					//System.out.println("back to block");
 					wait.add(t);
 				}
 			}
+			//process tasks that were just unblocked
 			for (Task t: ready){
 				blocked.remove(t);
 				if (!t.getActivity().getType().equals("terminate")){
@@ -203,6 +205,7 @@ public class Main {
 				tasksLeft = processBanker(tasks, available, allocated, need, blocked, max, releasedResources, errors, i, tasksLeft, cycle, resources);
 			}
 
+			//process blocked
 			for (Task t: blocked){
 				if(t.getComputeTime() == 0){
 					t.addBlock();
@@ -212,6 +215,7 @@ public class Main {
 				}
 				
 			}
+			//add back resources
 			for (int i = 0; i<numResources; i++){ 
 				available[i]+=releasedResources[i];
 			}
@@ -223,19 +227,21 @@ public class Main {
 	}
 	public static int processActivities(Task[] tasks, int[] available, int[][] allocated, Queue<Task> blocked, int[] releasedResources, int i, int numTasks, int cycle){
 		int tasksLeft = numTasks;
+		//checked not blocked, finished, or aborted
 		if (!blocked.contains(tasks[i]) && !tasks[i].isAborted() && !tasks[i].isFinished() && !tasks[i].processed()){
 			Activity cur = tasks[i].getActivity();
-			
+			//check if delay/needs compute time
 			if (cur.getDelay()>0 && !cur.isDelayed()){
 				tasks[i].setComputeTime(cur.getDelay());
 				blocked.add(tasks[i]);
 				cur.setDelayed();
 				tasks[i].setComputing(true);
 			}
-
+			//allow all tasks to pass initiate in FIFO
 			else if(cur.getType().equals("initiate")){
 				tasks[i].next();
 			}
+			//check if request can be satisfied, block if not
 			else if (cur.getType().equals("request")){
 				if (cur.getNumber() <= available[cur.getResource()]){
 					available[cur.getResource()]-=cur.getNumber();
@@ -246,6 +252,7 @@ public class Main {
 					blocked.add(tasks[i]);
 				}
 			}
+			//release tasks
 			else if (cur.getType().equals("release")){
 				releasedResources[cur.getResource()]+=cur.getNumber();
 				allocated[i][cur.getResource()]-=cur.getNumber();
@@ -261,6 +268,7 @@ public class Main {
 	
 	public static int processBanker(Task[] tasks, int[] available, int[][] allocated, int[][] need, Queue<Task> blocked, int[][] max,int[] releasedResources, ArrayList<Error> errors,int i, int numTasks, int cycle, int[] resources){
 		int tasksLeft = numTasks;
+		//check unblocked tasks and unfinished or not aborted
 		if (!blocked.contains(tasks[i]) && !tasks[i].isAborted() && !tasks[i].isFinished() && !tasks[i].processed()){
 			Activity cur = tasks[i].getActivity();
 			
@@ -270,13 +278,14 @@ public class Main {
 				cur.setDelayed();
 				tasks[i].setComputing(true);
 			}
-
+			//check initiate, abort if claims are greater than initial resources
 			else if(cur.getType().equals("initiate")){
 				if (cur.getNumber() > resources[cur.getResource()]){
 					tasks[i].abortTask();
-					errors.add(new Error("Banker", i + 1, cur.getResource(), cur.getNumber(),resources[cur.getResource()],cycle));
+					errors.add(new Error("Banker", i + 1, cur.getResource()+1, cur.getNumber(),resources[cur.getResource()],cycle));
 
 				}
+				//else set initial claim and update need matrix
 				else{
 					tasks[i].next();
 					max[i][cur.getResource()] = cur.getNumber();
@@ -284,13 +293,15 @@ public class Main {
 				}
 				
 			}
+			//if process requests more than it initially claimed, also abort
 			else if (cur.getType().equals("request")){
 				if (cur.getNumber() > need[i][cur.getResource()]){
 					tasks[i].abortTask();
-					errors.add(new Error("Banker", i + 1, cur.getResource(), allocated[i][cur.getResource()],resources[cur.getResource()],cycle));
+					errors.add(new Error("Banker", i + 1, cur.getResource() + 1, allocated[i][cur.getResource()],resources[cur.getResource()],cycle));
 					releaseAll(tasks[i], available, allocated);
 
 				}
+				//check if process is safe to proceed, block otherwise
 				else{
 					if (isSafe(tasks[i], available, allocated, need, i)){
 						available[cur.getResource()]-=cur.getNumber();
@@ -303,6 +314,7 @@ public class Main {
 					}
 				}
 			}
+			//check if process terminates. If so, release resources
 			else if (cur.getType().equals("release")){
 				releasedResources[cur.getResource()]+=cur.getNumber();
 				allocated[i][cur.getResource()]-=cur.getNumber();
@@ -315,28 +327,29 @@ public class Main {
 			}
 			
 			else{
-				//terminate	
+				//terminate	and finish tasks
 				tasks[i].finishTask(cycle + tasks[i].getComputeTime());
 				tasksLeft--;
 			}
 		}
 		return tasksLeft;
 	}
+	/*release all resources if a process is aborted or terminated*/
 	public static void releaseAll(Task t, int[] available, int[][] allocated){
 		for (int i = 0; i < available.length; i++){
 			available[i]+=allocated[t.getId()-1][i];	
 		}
 	}
+	/*check to see if it's deadlocked or if some tasks or just computing*/
 	public static boolean allWaiting(Task[] tasks){
 		for (Task t: tasks){
-			int comp = t.getComputeTime();
 			if (!t.isFinished() && t.getComputeTime() == 0){
 				return false;
 			}
 		}
 		return true;
 	}
-	
+	/*Check if there are enough resources or no deadlock*/
 	public static boolean canAllocate (Task task, int[] available) {
 		Activity cur = task.getActivity();
 		if (cur.getResource() >=0){
@@ -346,6 +359,7 @@ public class Main {
 		}
 		return false;
 	}
+	/*check if state is safe if request is granted*/
 	public static boolean isSafe (Task task, int[] available, int[][] allocated, int[][] need, int i) {
 		Activity cur = task.getActivity();
 
@@ -373,6 +387,7 @@ public class Main {
 		return false;
 	}
 
+	/*Check if all tasks have been completed*/
 	public static boolean checkFinish(Task[] task){
 		for (int i = 0; i<task.length; i++){
 			if (!task[i].isFinished()){
@@ -381,7 +396,7 @@ public class Main {
 		}
 		return true;
 	}
-	
+	//print stats. All percentages are rounded down (floored)
 	public static void printFinishTime(String algo, Task[] tasks){
 		int totalTime = 0;
 		int totalBlockedTime = 0;

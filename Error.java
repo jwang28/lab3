@@ -1,4 +1,7 @@
 import java.util.*;
+/*
+Error class stores information on the task and conditions of program when the task was aborted. Used to print status at the end
+*/
 
 public class Error{
 	private String algo;
